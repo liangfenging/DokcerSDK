@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "JieShun.Docker.Agent": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}
