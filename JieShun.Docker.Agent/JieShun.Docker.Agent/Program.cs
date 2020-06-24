@@ -9,8 +9,7 @@ namespace JieShun.Docker.Agent
         {
             Console.WriteLine("Hello World!");
 
-            Console.WriteLine(nameof(DockerTopics.GetImages));
-
+ 
             Console.ReadKey();
         }
     }

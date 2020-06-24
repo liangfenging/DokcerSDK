@@ -20,20 +20,12 @@ namespace JieShun.Docker.SDK
     {
         private static DockerClient _client;
 
-        private static MQTTNetService mQTTNetService;
 
         public DockerSDK()
         {
             if (_client == null)
             {
                 _client = new DockerClientConfiguration(new Uri("unix:/var/run/docker.sock")).CreateClient();
-            }
-
-            if (mQTTNetService == null)
-            {
-                mQTTNetService = new MQTTNetService();
-                mQTTNetService.SetMqMsgCallBack(MsgCallBack);
-                mQTTNetService.ConnectAsync();
             }
         }
 
@@ -73,15 +65,13 @@ namespace JieShun.Docker.SDK
             string data = Encoding.UTF8.GetString(revMsg.payload);
             CreateContainerParameters parameters = JsonConvert.DeserializeObject<CreateContainerParameters>(data);
             var result = await _client.Containers.CreateContainerAsync(parameters);
-
-            //TODO:  订阅mqtt  升级result.ID
-
             return result;
         }
 
         public async Task<CreateContainerResponse> UpgradeContainerAsync(ReceviceMessage revMsg)
         {
-            string id = revMsg.topic;//TODO: 从topic中找出Id
+            string[] topicParam = revMsg.topic.Split('/');
+            string id = topicParam[topicParam.Length - 2];
 
             //先停止容器
             await _client.Containers.StopContainerAsync(id, new ContainerStopParameters { });
@@ -92,50 +82,21 @@ namespace JieShun.Docker.SDK
 
             if (result != null && !string.IsNullOrWhiteSpace(result.ID))
             {
-                //TODO:  订阅mqtt  升级result.ID
-
                 //移除之前容器
                 await _client.Containers.RemoveContainerAsync(id, new ContainerRemoveParameters { });
             }
             return result;
         }
 
-        public async Task ExportContainerAsync(ReceviceMessage revMsg)
+        public async Task<Stream> ExportContainerAsync(ReceviceMessage revMsg)
         {
-            string id = revMsg.topic;//TODO: 从topic中找出Id
+            string[] topicParam = revMsg.topic.Split('/');
+            string id = topicParam[topicParam.Length - 2];
 
-            await _client.Containers.ExportContainerAsync(id);
+            var result = await _client.Containers.ExportContainerAsync(id);
+
+            return result;
         }
 
-        /// <summary>
-        /// mqtt call back
-        /// </summary>
-        /// <param name="revMsg"></param>
-        /// <returns></returns>
-        private async Task MsgCallBack(ReceviceMessage revMsg)
-        {
-            Task.Factory.StartNew(OnRecive, revMsg);
-            await Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// mqtt msg
-        /// </summary>
-        /// <param name="data"></param>
-        private void OnRecive(object data)
-        {
-            try
-            {
-                ReceviceMessage msg = data as ReceviceMessage;
-
-                //Type t = typeof(DockerSDK);//类名
-                //MethodInfo mt = t.GetMethod(nameof(DockerTopics.GetImages));//加载方法
-                //mt.Invoke(this, new object[] { msg });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("消息处理失败:" + ex.Message);
-            }
-        }
     }
 }

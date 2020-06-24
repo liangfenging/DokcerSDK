@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading.Tasks;
 using JieShun.Docker.Domain.Models;
 using MQTTnet;
@@ -12,7 +13,9 @@ namespace JieShun.Docker.Domain
 {
     public class MQTTNetService
     {
-        Func<ReceviceMessage, Task> MqMsgCallBack;
+        //Func<ReceviceMessage, Task> MqMsgCallBack;
+
+        private ConcurrentDictionary<string, Func<ReceviceMessage, Task>> dicMqMsgCallBack = new ConcurrentDictionary<string, Func<ReceviceMessage, Task>>();
 
         IMqttClient mqttClient;
 
@@ -54,13 +57,19 @@ namespace JieShun.Docker.Domain
             {
                 ReceviceMessage revMsg = new ReceviceMessage();
                 revMsg.clientId = e.ClientId;
-                revMsg.topic = e.ApplicationMessage.Topic;
+                string topic = revMsg.topic = e.ApplicationMessage.Topic;
                 revMsg.payload = e.ApplicationMessage.Payload;
 
-                if (MqMsgCallBack != null)
+                var callbackKeys = dicMqMsgCallBack.Keys.Where(p => (p.EndsWith("#") && topic.StartsWith(p.TrimEnd('#').TrimEnd('/')) || p == topic)).ToList();
+
+                foreach (var item in callbackKeys)
                 {
-                    await MqMsgCallBack(revMsg);
+                    if (dicMqMsgCallBack[item] != null)
+                    {
+                       await dicMqMsgCallBack[item](revMsg);
+                    }
                 }
+
             }
         }
 
@@ -95,9 +104,11 @@ namespace JieShun.Docker.Domain
             }
         }
 
-        public void SetMqMsgCallBack(Func<ReceviceMessage, Task> msgCallBack)
+        public void SetMqMsgCallBack(string topic, Func<ReceviceMessage, Task> msgCallBack)
         {
-            MqMsgCallBack += msgCallBack;
+            //MqMsgCallBack += msgCallBack;
+
+            dicMqMsgCallBack.AddOrUpdate(topic, msgCallBack, (k, v) => msgCallBack);
         }
 
         public async Task Subscribe(string topic, int qos = 0)
