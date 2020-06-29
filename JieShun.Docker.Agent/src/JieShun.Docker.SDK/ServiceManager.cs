@@ -1,5 +1,7 @@
-﻿using JieShun.Docker.Domain;
+﻿using Docker.DotNet.Models;
+using JieShun.Docker.Domain;
 using JieShun.Docker.Domain.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -9,7 +11,7 @@ namespace JieShun.Docker.SDK
 {
     public class ServiceManager
     {
-        private DockerSDK dockerSdk;
+        private DockerSDK _dockerSdk;
 
         private const string GetContainers = "SERVICES";
 
@@ -19,11 +21,15 @@ namespace JieShun.Docker.SDK
 
         private const string ExportContainer = "EXPORT";
 
-        public ServiceManager(MQTTNetService mQTTNetService)
-        {
-            mQTTNetService.SetMqMsgCallBack(DockerTopics.ServicesTopic, MsgCallBack);
+        MQTTNetService _mQTTNetService;
 
-            dockerSdk = new DockerSDK();
+        public ServiceManager(MQTTNetService mQTTNetService, DockerSDK dockerSdk)
+        {
+            _mQTTNetService = mQTTNetService;
+            _dockerSdk = dockerSdk;
+
+            mQTTNetService.SetMqMsgCallBack(DockerTopics.ServicesTopic, MsgCallBack);
+            mQTTNetService.Subscribe(DockerTopics.ServicesTopic);
         }
 
         private async Task MsgCallBack(ReceviceMessage revMsg)
@@ -49,23 +55,47 @@ namespace JieShun.Docker.SDK
                     switch (topicParam[topicParam.Length - 1].ToUpper())
                     {
                         case GetContainers:
-                            dockerSdk.GetContainers(msg);
-                            //TODO: 进行MQTT响应
+                           var containers =  _dockerSdk.GetContainers(msg).Result;
+                            //进行MQTT响应
+                            ResponseBase<List<ContainerListResponse>> responseData = new ResponseBase<List<ContainerListResponse>>();
+                            responseData.code = 200;
+                            responseData.message = "";
+                            responseData.data = containers;
+
+                            byte[] containersBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseData));
+                            _mQTTNetService.PublicshAsync(DockerTopics.ServicesACK, containersBytes);
+            
                             break;
                         case CreateContainer:
-                            dockerSdk.CreateContainerAsync(msg);
+                            var createcontainResult = _dockerSdk.CreateContainerAsync(msg).Result;
 
-                            //TODO: 进行MQTT响应
+                            //进行MQTT响应
+                            ResponseBase<CreateContainerResponse> responseCreateData = new ResponseBase<CreateContainerResponse>();
+                            responseCreateData.code = 200;
+                            responseCreateData.message = "";
+                            responseCreateData.data = createcontainResult;
+
+                            byte[] createBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseCreateData));
+                            _mQTTNetService.PublicshAsync(DockerTopics.ServicesCreateACK, createBytes);
+
                             break;
                         case UpgradeContainer:
-                            dockerSdk.UpgradeContainerAsync(msg);
+                            var upgradecontainResult = _dockerSdk.UpgradeContainerAsync(msg).Result;
 
-                            //TODO: 进行MQTT响应
+                            //进行MQTT响应
+                            ResponseBase<CreateContainerResponse> responseUpgradeData = new ResponseBase<CreateContainerResponse>();
+                            responseUpgradeData.code = 200;
+                            responseUpgradeData.message = "";
+                            responseUpgradeData.data = upgradecontainResult;
+
+                            byte[] upgradeBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseUpgradeData));
+                            _mQTTNetService.PublicshAsync(DockerTopics.ServicesUpgradeACK, upgradeBytes);
+
                             break;
                         case ExportContainer:
-                            dockerSdk.ExportContainerAsync(msg);
-
-                            //TODO: 进行MQTT响应
+                            _dockerSdk.ExportContainerAsync(msg);
+                            //暂不实现
+                          
                             break;
                         default:
                             break;

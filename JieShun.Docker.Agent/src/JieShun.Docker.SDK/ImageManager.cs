@@ -1,6 +1,8 @@
 ﻿using Docker.DotNet;
+using Docker.DotNet.Models;
 using JieShun.Docker.Domain;
 using JieShun.Docker.Domain.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -12,13 +14,18 @@ namespace JieShun.Docker.SDK
     {
         private const string GetImages = "IMAGES";
 
-        private DockerSDK dockerSdk;
+        private DockerSDK _dockerSdk;
 
-        public ImageManager(MQTTNetService mQTTNetService)
+        MQTTNetService _mQTTNetService;
+
+        public ImageManager(MQTTNetService mQTTNetService, DockerSDK dockerSdk)
         {
-            mQTTNetService.SetMqMsgCallBack(DockerTopics.ImagesTopic, MsgCallBack);
+            _mQTTNetService = mQTTNetService;
+            _dockerSdk = dockerSdk;
 
-            dockerSdk = new DockerSDK();
+            mQTTNetService.SetMqMsgCallBack(DockerTopics.ImagesTopic, MsgCallBack);
+            mQTTNetService.Subscribe(DockerTopics.ImagesTopic);
+           
         }
 
         private async Task MsgCallBack(ReceviceMessage revMsg)
@@ -44,9 +51,16 @@ namespace JieShun.Docker.SDK
                     switch (topicParam[topicParam.Length - 1].ToUpper())
                     {
                         case GetImages:
-                             dockerSdk.GetImages(msg);
+                            var resultImages = _dockerSdk.GetImages(msg).Result;
 
-                            //TODO: 进行MQTT响应
+                            //进行MQTT响应
+                            ResponseBase<List<ImagesListResponse>> responseData = new ResponseBase<List<ImagesListResponse>>();
+                            responseData.code = 200;
+                            responseData.message = "";
+                            responseData.data = resultImages;
+
+                            byte[] imagesBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseData));
+                            _mQTTNetService.PublicshAsync(DockerTopics.ImagesACK, imagesBytes);
 
                             break;
                         default:

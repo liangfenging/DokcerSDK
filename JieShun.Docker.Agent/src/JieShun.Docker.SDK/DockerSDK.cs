@@ -21,11 +21,15 @@ namespace JieShun.Docker.SDK
         private static DockerClient _client;
 
 
-        public DockerSDK()
+        public DockerSDK(string url)
         {
             if (_client == null)
             {
-                _client = new DockerClientConfiguration(new Uri("unix:/var/run/docker.sock")).CreateClient();
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    url = "unix:/var/run/docker.sock";
+                }
+                _client = new DockerClientConfiguration(new Uri(url)).CreateClient();
             }
         }
 
@@ -38,6 +42,10 @@ namespace JieShun.Docker.SDK
         {
             string data = Encoding.UTF8.GetString(revMsg.payload);
             ImagesListParameters parameters = JsonConvert.DeserializeObject<ImagesListParameters>(data);
+            if (string.IsNullOrWhiteSpace(parameters.MatchName))
+            {
+                parameters.All = true;
+            }
             var list = await _client.Images.ListImagesAsync(parameters);
             return list.ToList();
         }

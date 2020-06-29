@@ -13,6 +13,12 @@ namespace JieShun.Docker.Domain.Models
 
         public const string ServicesTopic = "nm/V1/projectNo/docker/services/#";
 
+        public const string ImagesACK = "nm/V1/projectNo/docker/images/ack/machineId";
 
+        public const string ServicesACK = "nm/V1/projectNo/docker/services/ack/machineId";
+
+        public const string ServicesCreateACK = "nm/V1/projectNo/docker/services/ack";
+
+        public const string ServicesUpgradeACK = "nm/V1/projectNo/docker/services/ack";
     }
 }
