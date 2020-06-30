@@ -13,9 +13,9 @@ namespace JieShun.Docker.Agent
     {
         static void Main(string[] args)
         {
-            //Console.WriteLine("Hello World!");
+            Console.WriteLine("Hello World!");
 
-            //DockerSDK dockerSDK = new DockerSDK("http://127.0.0.1:9890");
+            DockerSDK dockerSDK = new DockerSDK("http://192.168.29.128:2375");
 
             //ReceviceMessage getImages = new ReceviceMessage();
             //getImages.topic = "nm/V1/projectNo/docker/images";
@@ -24,26 +24,41 @@ namespace JieShun.Docker.Agent
             //var images = dockerSDK.GetImages(getImages).Result;
             //string jsondata = JsonConvert.SerializeObject(images);
 
-            //ReceviceMessage createContainer = new ReceviceMessage();
-            //createContainer.topic = "nm/V1/projectNo/docker/services/create";
+            ReceviceMessage createContainer = new ReceviceMessage();
+            createContainer.topic = "nm/V1/projectNo/docker/services/ca325e47098c/update";
 
-            //CreateContainerParameters createContainerParameters = new CreateContainerParameters();
-            //createContainerParameters.ExposedPorts = new Dictionary<string, EmptyStruct>();
-            //createContainerParameters.ExposedPorts.Add("5000/tcp", default(EmptyStruct));
-            //createContainerParameters.Image = "webtest:0.3";
+            CreateContainerParameters createContainerParameters = new CreateContainerParameters();
+            createContainerParameters.ExposedPorts = new Dictionary<string, EmptyStruct>();
+            createContainerParameters.ExposedPorts.Add("80/tcp", default(EmptyStruct));
 
-            //createContainer.payload = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(createContainerParameters));
+            Dictionary<string, IList<PortBinding>> portBindings = new Dictionary<string, IList<PortBinding>>();
+            portBindings.Add("80/tcp", new List<PortBinding> { new PortBinding { HostIP = "0.0.0.0", HostPort = "8990" } });
 
-            //var result = dockerSDK.CreateContainerAsync(createContainer).Result;
-            //string jsondata = JsonConvert.SerializeObject(result);
-            //Console.WriteLine(jsondata);
+            createContainerParameters.HostConfig = new HostConfig { PortBindings = portBindings, AutoRemove = true };
+            createContainerParameters.Image = "webtest:0.1";
 
-            MQTTNetService mQTTNetService = new MQTTNetService();
-            mQTTNetService.ConnectAsync();
-            DockerSDK dockerSDK = new DockerSDK("");
 
-            ImageManager imageManager = new ImageManager(mQTTNetService, dockerSDK);
-            ServiceManager serviceManager = new ServiceManager(mQTTNetService, dockerSDK);
+            createContainer.payload = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(createContainerParameters));
+
+            var result = dockerSDK.UpgradeContainerAsync(createContainer).Result;
+
+            if (result != null && !string.IsNullOrWhiteSpace(result.ID))
+            {
+                var startResult = dockerSDK.StartContainerAsync(result.ID);
+            }
+
+            string jsondata = JsonConvert.SerializeObject(result);
+
+            string testdata = JsonConvert.SerializeObject(createContainerParameters);
+            Console.WriteLine(jsondata);
+
+
+            //MQTTNetService mQTTNetService = new MQTTNetService();
+            //mQTTNetService.ConnectAsync();
+            //DockerSDK dockerSDK = new DockerSDK("");
+
+            //ImageManager imageManager = new ImageManager(mQTTNetService, dockerSDK);
+            //ServiceManager serviceManager = new ServiceManager(mQTTNetService, dockerSDK);
 
 
             Console.ReadKey();

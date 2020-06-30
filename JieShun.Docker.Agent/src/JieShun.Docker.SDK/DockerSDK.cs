@@ -76,6 +76,13 @@ namespace JieShun.Docker.SDK
             return result;
         }
 
+        public async Task<bool> StartContainerAsync(string id)
+        {
+            bool result = await _client.Containers.StartContainerAsync(id, new ContainerStartParameters { });
+            return result;
+        }
+
+
         public async Task<CreateContainerResponse> UpgradeContainerAsync(ReceviceMessage revMsg)
         {
             string[] topicParam = revMsg.topic.Split('/');

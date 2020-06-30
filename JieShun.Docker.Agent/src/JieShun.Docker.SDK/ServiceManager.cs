@@ -55,38 +55,77 @@ namespace JieShun.Docker.SDK
                     switch (topicParam[topicParam.Length - 1].ToUpper())
                     {
                         case GetContainers:
-                           var containers =  _dockerSdk.GetContainers(msg).Result;
+                          
                             //进行MQTT响应
                             ResponseBase<List<ContainerListResponse>> responseData = new ResponseBase<List<ContainerListResponse>>();
                             responseData.code = 200;
                             responseData.message = "";
-                            responseData.data = containers;
+
+                            try
+                            {
+                                var containers = _dockerSdk.GetContainers(msg).Result;
+                                responseData.data = containers;
+                            }
+                            catch (Exception ee)
+                            {
+                                responseData.code = 406;
+                                responseData.message = ee.Message;
+                            }
+                   
 
                             byte[] containersBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseData));
                             _mQTTNetService.PublicshAsync(DockerTopics.ServicesACK, containersBytes);
-            
+
                             break;
                         case CreateContainer:
-                            var createcontainResult = _dockerSdk.CreateContainerAsync(msg).Result;
-
+                            bool success = false;
                             //进行MQTT响应
                             ResponseBase<CreateContainerResponse> responseCreateData = new ResponseBase<CreateContainerResponse>();
                             responseCreateData.code = 200;
                             responseCreateData.message = "";
-                            responseCreateData.data = createcontainResult;
+
+                            try
+                            {
+                                var createcontainResult = _dockerSdk.CreateContainerAsync(msg).Result;
+                                if (createcontainResult != null && !string.IsNullOrWhiteSpace(createcontainResult.ID))
+                                {
+                                    success = _dockerSdk.StartContainerAsync(createcontainResult.ID).Result;
+                                }
+                                if (!success)
+                                {
+                                    responseCreateData.code = 406;
+                                    responseCreateData.message = "容器启动失败，可能主机端口已被占用";
+                                }
+                                responseCreateData.data = createcontainResult;
+                            }
+                            catch (Exception e)
+                            {
+                                responseCreateData.code = 406;
+                                responseCreateData.message = e.Message;
+                            }
 
                             byte[] createBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseCreateData));
                             _mQTTNetService.PublicshAsync(DockerTopics.ServicesCreateACK, createBytes);
 
                             break;
                         case UpgradeContainer:
-                            var upgradecontainResult = _dockerSdk.UpgradeContainerAsync(msg).Result;
-
-                            //进行MQTT响应
                             ResponseBase<CreateContainerResponse> responseUpgradeData = new ResponseBase<CreateContainerResponse>();
                             responseUpgradeData.code = 200;
                             responseUpgradeData.message = "";
-                            responseUpgradeData.data = upgradecontainResult;
+
+                            try
+                            {
+                                var upgradecontainResult = _dockerSdk.UpgradeContainerAsync(msg).Result;
+
+                                //进行MQTT响应
+                                responseUpgradeData.data = upgradecontainResult;
+                            }
+                            catch (Exception ex)
+                            {
+                                responseUpgradeData.code = 406;
+                                responseUpgradeData.message = ex.Message;
+                            }
+
 
                             byte[] upgradeBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseUpgradeData));
                             _mQTTNetService.PublicshAsync(DockerTopics.ServicesUpgradeACK, upgradeBytes);
@@ -95,7 +134,7 @@ namespace JieShun.Docker.SDK
                         case ExportContainer:
                             _dockerSdk.ExportContainerAsync(msg);
                             //暂不实现
-                          
+
                             break;
                         default:
                             break;

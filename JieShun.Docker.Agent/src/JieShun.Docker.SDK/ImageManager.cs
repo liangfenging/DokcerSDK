@@ -25,7 +25,7 @@ namespace JieShun.Docker.SDK
 
             mQTTNetService.SetMqMsgCallBack(DockerTopics.ImagesTopic, MsgCallBack);
             mQTTNetService.Subscribe(DockerTopics.ImagesTopic);
-           
+
         }
 
         private async Task MsgCallBack(ReceviceMessage revMsg)
@@ -51,13 +51,21 @@ namespace JieShun.Docker.SDK
                     switch (topicParam[topicParam.Length - 1].ToUpper())
                     {
                         case GetImages:
-                            var resultImages = _dockerSdk.GetImages(msg).Result;
-
                             //进行MQTT响应
                             ResponseBase<List<ImagesListResponse>> responseData = new ResponseBase<List<ImagesListResponse>>();
                             responseData.code = 200;
                             responseData.message = "";
-                            responseData.data = resultImages;
+
+                            try
+                            {
+                                var resultImages = _dockerSdk.GetImages(msg).Result;
+                                responseData.data = resultImages;
+                            }
+                            catch (Exception e)
+                            {
+                                responseData.code = 406;
+                                responseData.message = e.Message;
+                            }
 
                             byte[] imagesBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseData));
                             _mQTTNetService.PublicshAsync(DockerTopics.ImagesACK, imagesBytes);
