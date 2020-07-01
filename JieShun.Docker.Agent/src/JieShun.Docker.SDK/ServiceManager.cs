@@ -46,21 +46,32 @@ namespace JieShun.Docker.SDK
         {
             try
             {
+                bool success = false;
                 ReceviceMessage msg = data as ReceviceMessage;
-
+                string jsondata = "";
                 string[] topicParam = msg.topic.Split('/');
+                string transId = "";
+                RequestBase requestdata = JsonConvert.DeserializeObject<RequestBase>(Encoding.UTF8.GetString(msg.payload));
+                if (requestdata == null || string.IsNullOrWhiteSpace(requestdata.transId))
+                {
+                    transId = Guid.NewGuid().ToString("N");
+                }
+                else
+                {
+                    transId = requestdata.transId;
+                }
 
                 if (topicParam.Length > 0)
                 {
                     switch (topicParam[topicParam.Length - 1].ToUpper())
                     {
                         case GetContainers:
-                          
+
                             //进行MQTT响应
                             ResponseBase<List<ContainerListResponse>> responseData = new ResponseBase<List<ContainerListResponse>>();
                             responseData.code = 200;
                             responseData.message = "";
-
+                            responseData.transId = transId;
                             try
                             {
                                 var containers = _dockerSdk.GetContainers(msg).Result;
@@ -71,19 +82,19 @@ namespace JieShun.Docker.SDK
                                 responseData.code = 406;
                                 responseData.message = ee.Message;
                             }
-                   
+                            jsondata = JsonConvert.SerializeObject(responseData);
 
-                            byte[] containersBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseData));
+                            byte[] containersBytes = Encoding.UTF8.GetBytes(jsondata);
                             _mQTTNetService.PublicshAsync(DockerTopics.ServicesACK, containersBytes);
 
                             break;
                         case CreateContainer:
-                            bool success = false;
+                            
                             //进行MQTT响应
                             ResponseBase<CreateContainerResponse> responseCreateData = new ResponseBase<CreateContainerResponse>();
                             responseCreateData.code = 200;
                             responseCreateData.message = "";
-
+                            responseCreateData.transId = transId;
                             try
                             {
                                 var createcontainResult = _dockerSdk.CreateContainerAsync(msg).Result;
@@ -103,8 +114,8 @@ namespace JieShun.Docker.SDK
                                 responseCreateData.code = 406;
                                 responseCreateData.message = e.Message;
                             }
-
-                            byte[] createBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseCreateData));
+                            jsondata = JsonConvert.SerializeObject(responseCreateData);
+                            byte[] createBytes = Encoding.UTF8.GetBytes(jsondata);
                             _mQTTNetService.PublicshAsync(DockerTopics.ServicesCreateACK, createBytes);
 
                             break;
@@ -112,11 +123,19 @@ namespace JieShun.Docker.SDK
                             ResponseBase<CreateContainerResponse> responseUpgradeData = new ResponseBase<CreateContainerResponse>();
                             responseUpgradeData.code = 200;
                             responseUpgradeData.message = "";
-
+                            responseUpgradeData.transId = transId;
                             try
                             {
                                 var upgradecontainResult = _dockerSdk.UpgradeContainerAsync(msg).Result;
-
+                                if (upgradecontainResult != null && !string.IsNullOrWhiteSpace(upgradecontainResult.ID))
+                                {
+                                    success = _dockerSdk.StartContainerAsync(upgradecontainResult.ID).Result;
+                                }
+                                if (!success)
+                                {
+                                    responseUpgradeData.code = 406;
+                                    responseUpgradeData.message = "容器启动失败，可能主机端口已被占用";
+                                }
                                 //进行MQTT响应
                                 responseUpgradeData.data = upgradecontainResult;
                             }
@@ -126,8 +145,8 @@ namespace JieShun.Docker.SDK
                                 responseUpgradeData.message = ex.Message;
                             }
 
-
-                            byte[] upgradeBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(responseUpgradeData));
+                            jsondata = JsonConvert.SerializeObject(responseUpgradeData);
+                            byte[] upgradeBytes = Encoding.UTF8.GetBytes(jsondata);
                             _mQTTNetService.PublicshAsync(DockerTopics.ServicesUpgradeACK, upgradeBytes);
 
                             break;

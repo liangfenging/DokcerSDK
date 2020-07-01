@@ -41,11 +41,20 @@ namespace JieShun.Docker.SDK
         public async Task<List<ImagesListResponse>> GetImages(ReceviceMessage revMsg)
         {
             string data = Encoding.UTF8.GetString(revMsg.payload);
-            ImagesListParameters parameters = JsonConvert.DeserializeObject<ImagesListParameters>(data);
-            if (string.IsNullOrWhiteSpace(parameters.MatchName))
+            ImagesListInputParameters parametersInput = JsonConvert.DeserializeObject<ImagesListInputParameters>(data);
+            ImagesListParameters parameters = new ImagesListParameters();
+            parameters.All = parametersInput.All;
+
+            if (parametersInput.Filters != null)
             {
-                parameters.All = true;
+                parameters.Filters = parametersInput.Filters;
             }
+
+            if (!string.IsNullOrWhiteSpace(parametersInput.MatchName))
+            {
+                parameters.MatchName = parametersInput.MatchName;
+            }
+
             var list = await _client.Images.ListImagesAsync(parameters);
             return list.ToList();
         }

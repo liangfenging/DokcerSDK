@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using JieShun.Docker.Domain.Models;
 using MQTTnet;
@@ -15,13 +16,31 @@ namespace JieShun.Docker.Domain
     {
         //Func<ReceviceMessage, Task> MqMsgCallBack;
 
-        private ConcurrentDictionary<string, Func<ReceviceMessage, Task>> dicMqMsgCallBack = new ConcurrentDictionary<string, Func<ReceviceMessage, Task>>();
+        string connectIP = "127.0.0.1";
+        int port = 1883;
 
-        IMqttClient mqttClient;
+        public MQTTNetService()
+        {
 
-        IMqttClientOptions mqoptions;
+        }
 
-        private ConcurrentDictionary<string, MqttTopicFilter> dicSubscribe = new ConcurrentDictionary<string, MqttTopicFilter>();
+        public MQTTNetService(string ipportaddress)
+        {
+            if (!string.IsNullOrWhiteSpace(ipportaddress) && ipportaddress.Contains(":"))
+            {
+                string[] addressArray = ipportaddress.Split(':');
+                connectIP = addressArray[0];
+                port = int.Parse(addressArray[1]);
+            }
+        }
+
+        private static ConcurrentDictionary<string, Func<ReceviceMessage, Task>> dicMqMsgCallBack = new ConcurrentDictionary<string, Func<ReceviceMessage, Task>>();
+
+        static IMqttClient mqttClient;
+
+        static IMqttClientOptions mqoptions;
+
+        private static ConcurrentDictionary<string, MqttTopicFilter> dicSubscribe = new ConcurrentDictionary<string, MqttTopicFilter>();
         public async Task ConnectAsync()
         {
             if (mqttClient == null)
@@ -29,7 +48,7 @@ namespace JieShun.Docker.Domain
                 mqttClient = new MqttFactory().CreateMqttClient();
             }
 
-            var mqBuild = new MqttClientOptionsBuilder().WithTcpServer("127.0.0.1", 1883);
+            var mqBuild = new MqttClientOptionsBuilder().WithTcpServer(connectIP, port);
 
             mqoptions = mqBuild.WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V310).Build();
 
@@ -60,13 +79,15 @@ namespace JieShun.Docker.Domain
                 string topic = revMsg.topic = e.ApplicationMessage.Topic;
                 revMsg.payload = e.ApplicationMessage.Payload;
 
+                Console.WriteLine("接收消息成功topic[" + topic + "]：" + Encoding.UTF8.GetString(revMsg.payload));
+
                 var callbackKeys = dicMqMsgCallBack.Keys.Where(p => (p.EndsWith("#") && topic.StartsWith(p.TrimEnd('#').TrimEnd('/')) || p == topic)).ToList();
 
                 foreach (var item in callbackKeys)
                 {
                     if (dicMqMsgCallBack[item] != null)
                     {
-                       await dicMqMsgCallBack[item](revMsg);
+                        await dicMqMsgCallBack[item](revMsg);
                     }
                 }
 
@@ -115,12 +136,9 @@ namespace JieShun.Docker.Domain
         {
             var subscribe = new MqttTopicFilterBuilder().WithTopic(topic);
             subscribe.WithAtMostOnceQoS();
-
             var topicfilter = subscribe.Build();
-
-            await mqttClient.SubscribeAsync(topicfilter);
-
             dicSubscribe.AddOrUpdate(topic, topicfilter, (k, v) => topicfilter);
+            await mqttClient.SubscribeAsync(topicfilter);
         }
 
         public async Task PublicshAsync(string topic, byte[] payload, int retain = 0, int qos = 0)
@@ -138,6 +156,10 @@ namespace JieShun.Docker.Domain
                 if (result.ReasonCode != MQTTnet.Client.Publishing.MqttClientPublishReasonCode.Success)
                 {
                     Console.WriteLine("发送消息失败，topic[" + topic + "],Code:" + result.ReasonCode.ToString());
+                }
+                else
+                {
+                    Console.WriteLine("发送消息成功topic[" + topic + "]：" + Encoding.UTF8.GetString(payload));
                 }
             }
         }
