@@ -65,7 +65,7 @@ namespace JieShun.Docker.Agent
             {
                 mQTTNetService = new MQTTNetService(args[1]);
             }
-           
+
             mQTTNetService.ConnectAsync();
 
 
@@ -74,8 +74,16 @@ namespace JieShun.Docker.Agent
             ImageManager imageManager = new ImageManager(mQTTNetService, dockerSDK);
             ServiceManager serviceManager = new ServiceManager(mQTTNetService, dockerSDK);
 
+            while (true)
+            {
+                var keydown = Console.ReadKey();
+                if (keydown.Key == ConsoleKey.Escape)
+                {
+                    break;
+                }
 
-            Console.ReadKey();
+                System.Threading.Thread.Sleep(500);
+            }
         }
     }
 }

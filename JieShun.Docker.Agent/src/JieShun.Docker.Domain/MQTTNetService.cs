@@ -111,17 +111,19 @@ namespace JieShun.Docker.Domain
         {
             if (!mqttClient.IsConnected)
             {
+                await Task.Delay(5000);
                 Console.WriteLine("MQTT连接已断开");
                 try
                 {
-                    await mqttClient.ReconnectAsync();
+                    if (!mqttClient.IsConnected)
+                    {
+                        await mqttClient.ReconnectAsync();
+                    }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.Message);
                 }
-
-                await Task.Delay(500);
             }
         }
 

@@ -60,6 +60,20 @@ namespace JieShun.Docker.SDK
         }
 
         /// <summary>
+        /// 拉取镜像
+        /// </summary>
+        /// <param name="revMsg"></param>
+        /// <returns></returns>
+        public async Task CreateImageAsync(ReceviceMessage revMsg)
+        {
+            string data = Encoding.UTF8.GetString(revMsg.payload);
+            ImagesCreateParameters parameters = JsonConvert.DeserializeObject<ImagesCreateParameters>(data);
+            AuthConfig authConfig = JsonConvert.DeserializeObject<AuthConfig>(data);
+            Progress<JSONMessage> progress = new Progress<JSONMessage>();
+            await _client.Images.CreateImageAsync(parameters, authConfig, progress);
+        }
+
+        /// <summary>
         /// 查询容器
         /// </summary>
         /// <param name="revMsg"></param>

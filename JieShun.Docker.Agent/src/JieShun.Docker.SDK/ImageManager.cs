@@ -14,6 +14,8 @@ namespace JieShun.Docker.SDK
     {
         private const string GetImages = "IMAGES";
 
+        private const string CreateImages = "CREATE";
+
         private DockerSDK _dockerSdk;
 
         MQTTNetService _mQTTNetService;
@@ -81,6 +83,29 @@ namespace JieShun.Docker.SDK
                             byte[] imagesBytes = Encoding.UTF8.GetBytes(jsondata);
                             _mQTTNetService.PublicshAsync(DockerTopics.ImagesACK, imagesBytes);
 
+                            break;
+
+                        case CreateImages:
+                            //进行MQTT响应
+                            ResponseBase responseCreateData = new ResponseBase();
+                            responseCreateData.code = 200;
+                            responseCreateData.message = "";
+                            responseCreateData.transId = transId;
+                            try
+                            {
+                                _dockerSdk.CreateImageAsync(msg).Wait();
+
+                            }
+                            catch (Exception e)
+                            {
+                                responseCreateData.code = 406;
+                                responseCreateData.message = e.Message;
+                            }
+
+                            string jsonCreatedata = JsonConvert.SerializeObject(responseCreateData);
+
+                            byte[] imagesCreateBytes = Encoding.UTF8.GetBytes(jsonCreatedata);
+                            _mQTTNetService.PublicshAsync(DockerTopics.ImagesCreateACK, imagesCreateBytes);
                             break;
                         default:
                             break;

@@ -15,6 +15,8 @@ namespace JieShun.Docker.Domain.Models
 
         public const string ImagesACK = "nm/V1/projectNo/docker/ack/images";
 
+        public const string ImagesCreateACK = "nm/V1/projectNo/docker/ack/images/create";
+
         public const string ServicesACK = "nm/V1/projectNo/docker/ack/services";
 
         public const string ServicesCreateACK = "nm/V1/projectNo/docker/ack/services/create";
