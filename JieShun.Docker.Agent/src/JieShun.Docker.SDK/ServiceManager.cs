@@ -21,6 +21,11 @@ namespace JieShun.Docker.SDK
 
         private const string ExportContainer = "EXPORT";
 
+        private const string StartContainer = "START";
+
+        private const string StopContainer = "STOP";
+
+
         MQTTNetService _mQTTNetService;
 
         public ServiceManager(MQTTNetService mQTTNetService, DockerSDK dockerSdk)
@@ -154,6 +159,58 @@ namespace JieShun.Docker.SDK
                             _dockerSdk.ExportContainerAsync(msg);
                             //暂不实现
 
+                            break;
+                        case StartContainer:
+                            ResponseBase responseStartData = new ResponseBase();
+                            responseStartData.code = 200;
+                            responseStartData.message = "";
+                            responseStartData.transId = transId;
+
+                            try
+                            {
+                                string id = topicParam[topicParam.Length - 2];
+                                success = _dockerSdk.StartContainerAsync(id).Result;
+                                if (!success)
+                                {
+                                    responseStartData.code = 406;
+                                    responseStartData.message = "容器启动失败，可能主机端口已被占用";
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                responseStartData.code = 406;
+                                responseStartData.message = ex.Message;
+                            }
+
+                            jsondata = JsonConvert.SerializeObject(responseStartData);
+                            byte[] startBytes = Encoding.UTF8.GetBytes(jsondata);
+                            _mQTTNetService.PublicshAsync(DockerTopics.ServicesStartACK, startBytes);
+                            break;
+                        case StopContainer:
+                            ResponseBase responseStopData = new ResponseBase();
+                            responseStopData.code = 200;
+                            responseStopData.message = "";
+                            responseStopData.transId = transId;
+
+                            try
+                            {
+                                string id = topicParam[topicParam.Length - 2];
+                                success = _dockerSdk.StopContainerAsync(id).Result;
+                                if (!success)
+                                {
+                                    responseStopData.code = 406;
+                                    responseStopData.message = "容器停止失败";
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                responseStopData.code = 406;
+                                responseStopData.message = ex.Message;
+                            }
+
+                            jsondata = JsonConvert.SerializeObject(responseStopData);
+                            byte[] stopBytes = Encoding.UTF8.GetBytes(jsondata);
+                            _mQTTNetService.PublicshAsync(DockerTopics.ServicesStopACK, stopBytes);
                             break;
                         default:
                             break;

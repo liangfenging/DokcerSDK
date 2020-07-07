@@ -105,6 +105,17 @@ namespace JieShun.Docker.SDK
             return result;
         }
 
+        /// <summary>
+        /// 停止容器
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<bool> StopContainerAsync(string id)
+        {
+            bool result = await _client.Containers.StopContainerAsync(id, new ContainerStopParameters { });
+            return result;
+        }
+
 
         public async Task<CreateContainerResponse> UpgradeContainerAsync(ReceviceMessage revMsg)
         {

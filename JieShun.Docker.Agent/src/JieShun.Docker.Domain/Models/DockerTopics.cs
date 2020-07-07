@@ -22,5 +22,9 @@ namespace JieShun.Docker.Domain.Models
         public const string ServicesCreateACK = "nm/V1/projectNo/docker/ack/services/create";
 
         public const string ServicesUpgradeACK = "nm/V1/projectNo/docker/ack/services/update";
+
+        public const string ServicesStartACK = "nm/V1/projectNo/docker/ack/services/start";
+
+        public const string ServicesStopACK = "nm/V1/projectNo/docker/ack/services/stop";
     }
 }
